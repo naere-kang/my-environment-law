@@ -1,1 +1,2 @@
-streamlit/pandas/openai/supabase
+streamlit
+pandas
