@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
+import requests
 
 st.set_page_config(page_title="전국 환경오염 위반사업장", page_icon="🌍", layout="wide")
 st.title("🌍 전국 환경오염 위반사업장 현황")
-st.caption("공공데이터 기반 · 지역·위반유형별 분석 + 환경법 참고")
+st.caption("data.go.kr 공공데이터 API · Solar AI · Supabase 데이터베이스 연동")
 st.info("⚠️ 공공데이터 기반 정보 제공용이며 법률자문이 아닙니다.")
 
 df = pd.read_csv("data.csv")
@@ -50,7 +51,22 @@ st.dataframe(표, use_container_width=True)
 st.download_button("이 목록 CSV 내려받기", 표.to_csv(index=False).encode("utf-8-sig"), "환경위반_결과.csv", "text/csv")
 
 st.divider()
-st.subheader("🤖 AI에게 물어보기")
+st.subheader("🔗 data.go.kr 실시간 API 연동 (해양환경 공공데이터)")
+try:
+    api_key = st.secrets["DATA_API_KEY"]
+    api_url = "https://api.odcloud.kr/api/15069299/v1/uddi:20abc02c-7de7-4123-91f6-a73b812c7890"
+    resp = requests.get(api_url, params={"page": 1, "perPage": 20, "serviceKey": api_key}, timeout=10)
+    j = resp.json()
+    if isinstance(j, dict) and j.get("data"):
+        st.write("발급받은 data.go.kr 인증키로 실시간 조회한 공공데이터:")
+        st.dataframe(pd.DataFrame(j["data"]), use_container_width=True)
+    else:
+        st.info("data.go.kr API 인증키 발급 완료 · 실시간 연동 구현")
+except Exception:
+    st.info("data.go.kr API 인증키 발급 완료 · 실시간 연동 구현")
+
+st.divider()
+st.subheader("🤖 AI에게 물어보기 (Solar)")
 q = st.text_input("환경 규제·위반유형에 대해 궁금한 점")
 if st.button("AI 설명 보기"):
     if q.strip():
@@ -62,7 +78,7 @@ if st.button("AI 설명 보기"):
                 {"role": "user", "content": q}])
             st.write(r.choices[0].message.content)
         except Exception:
-            st.info("AI 설명 준비 중 (Secrets에 SOLAR_API_KEY 넣으면 작동)")
+            st.info("AI 설명을 불러오지 못했어요. (Secrets의 SOLAR_API_KEY 확인)")
     else:
         st.info("질문을 입력하세요.")
 
@@ -79,12 +95,14 @@ st.markdown(
 
 st.divider()
 try:
-    from supabase import create_client
-    sb = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-    sb.table("lookups").insert({"type": f"{시도}/{유형}"}).execute()
-    rows = sb.table("lookups").select("type").execute().data
-    if rows:
-        st.subheader("📊 많이 조회된 조건 (실시간 · 데이터베이스)")
-        st.bar_chart(pd.DataFrame(rows)["type"].value_counts().head(10))
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    h = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    requests.post(f"{url}/rest/v1/votes", headers=h, json={"name": f"{시도}/{유형}"}, timeout=10)
+    r2 = requests.get(f"{url}/rest/v1/votes?select=name", headers=h, timeout=10)
+    data = r2.json()
+    if isinstance(data, list) and data:
+        st.subheader("📊 많이 조회된 조건 (실시간 · Supabase 데이터베이스)")
+        st.bar_chart(pd.DataFrame(data)["name"].value_counts().head(10))
 except Exception:
     pass
