@@ -106,3 +106,6 @@ try:
         st.bar_chart(pd.DataFrame(data)["type"].value_counts().head(10))
 except Exception:
     pass
+    st.divider()
+st.subheader("🎬 환경 캠페인 영상")
+st.video("https://www.youtube.com/watch?v=ncSVDM696pc")
