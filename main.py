@@ -98,11 +98,11 @@ try:
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     h = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    requests.post(f"{url}/rest/v1/votes", headers=h, json={"name": f"{시도}/{유형}"}, timeout=10)
-    r2 = requests.get(f"{url}/rest/v1/votes?select=name", headers=h, timeout=10)
+    requests.post(f"{url}/rest/v1/lookups", headers=h, json={"type": f"{시도}/{유형}"}, timeout=10)
+    r2 = requests.get(f"{url}/rest/v1/lookups?select=type", headers=h, timeout=10)
     data = r2.json()
     if isinstance(data, list) and data:
         st.subheader("📊 많이 조회된 조건 (실시간 · Supabase 데이터베이스)")
-        st.bar_chart(pd.DataFrame(data)["name"].value_counts().head(10))
+        st.bar_chart(pd.DataFrame(data)["type"].value_counts().head(10))
 except Exception:
     pass
